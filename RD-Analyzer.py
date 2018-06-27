@@ -27,7 +27,6 @@ import gzip
 import subprocess
 from optparse import OptionParser
 
-
 ## Global variables.
 dir = os.path.split(os.path.realpath(__file__))[0] # script directory
 
@@ -115,6 +114,10 @@ if os.path.isfile(outprefix+'.sam') or os.path.isfile(outprefix+'.bam') or os.pa
 if not os.path.isdir(outdir):
     subprocess.call(["mkdir", outdir])
 
+## Check samtools version
+with subprocess.Popen("samtools", shell=True, stderr=subprocess.PIPE).stderr as pipe:
+	lines = b"".join(pipe.readlines())
+	samtools_version = re.search("Version:\s+(\S+)", lines).groups()[0]
 
 
 ############################################################
@@ -354,9 +357,12 @@ if __name__ == "__main__":
     os.system("samtools view -bS -o %s %s" % (outprefix+".bam", outprefix+".sam"))
 
     # Sort Bam file
-    os.system("samtools sort %s %s" % (outprefix+".bam", outprefix+".sort"))
-    os.system("samtools index %s" % outprefix+".sort.bam")
-
+    if int(samtools_version.split('.')[0]) < 1: #Check if samtools version is < 1
+    	os.system("samtools sort %s %s" % (outprefix+".bam", outprefix+".sort"))
+    	os.system("samtools index %s" % outprefix+".sort.bam")
+    else:
+	os.system("samtools sort %s -o %s" % (outprefix+".bam", outprefix+".sort.bam"))
+        os.system("samtools index %s" % outprefix+".sort.bam")
     # Calculate depth
     os.system("samtools depth %s > %s" % (outprefix+".sort.bam", outprefix+".depth"))
 
